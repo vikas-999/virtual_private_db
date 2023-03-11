@@ -1,0 +1,151 @@
+
+Project: 
+Virtual Private Database
+
+
+********************************************************/
+
+--create tablespace
+
+DROP TABLESPACE ia643F21_tbs including contents and datafiles;
+
+CREATE TABLESPACE ia643f21_tbs 
+DATAFILE 'IA643f21_dat' SIZE 500K REUSE
+AUTOEXTEND ON NEXT 300K MAXSIZE 50M;
+	
+--Create user account for joe harris
+
+DROP USER JAdmin;
+CREATE USER JAdmin
+IDENTIFIED BY JAdmin
+DEFAULT TABLESPACE ia643f21_tbs
+QUOTA 200K ON ia643f21_tbs
+TEMPORARY TABLESPACE TEMP
+ACCOUNT UNLOCK;
+
+GRANT CONNECT, RESOURCE TO JAdmin;
+
+--Create user account for felisa davis
+
+DROP USER FAdmin;
+CREATE USER fAdmin
+IDENTIFIED BY FAdmin
+DEFAULT TABLESPACE ia643f21_tbs
+QUOTA 200K ON ia643f21_tbs
+TEMPORARY TABLESPACE TEMP
+ACCOUNT UNLOCK;
+
+GRANT CONNECT, RESOURCE TO fAdmin;
+
+
+
+--Create Public Synonyms for company and giving priviledges to admins
+
+DROP PUBLIC SYNONYM COMPANY;
+CREATE PUBLIC SYNONYM COMPANY FOR DBA643.COMPANY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON COMPANY TO JAdmin,FAdmin;
+
+--Create Public Synonyms for employee and giving priviledges to admins
+
+DROP PUBLIC SYNONYM EMPLOYEE;
+CREATE PUBLIC SYNONYM EMPLOYEE FOR DBA643.EMPLOYEE;
+GRANT SELECT, INSERT, UPDATE, DELETE ON EMPLOYEE TO JAdmin,FAdmin;
+
+--Create Public Synonyms for timesheet and giving priviledges to admins
+
+DROP PUBLIC SYNONYM TIMESHEET;
+CREATE PUBLIC SYNONYM TIMESHEET FOR DBA643.TIMESHEET;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TIMESHEET TO JAdmin,FAdmin;
+
+--Create Public Synonyms for Payroll_period and giving priviledges to admins
+
+DROP PUBLIC SYNONYM PAYROLL_PERIOD;
+CREATE PUBLIC SYNONYM PAYROLL_PERIOD FOR DBA643.PAYROLL_PERIOD;
+GRANT SELECT, INSERT, UPDATE, DELETE ON PAYROLL_PERIOD TO JAdmin,FAdmin;
+
+
+--Create Public Synonyms for Daily_work_hours and giving priviledges to admins
+
+DROP PUBLIC SYNONYM DAILY_WORK_HOURS;
+CREATE PUBLIC SYNONYM DAILY_WORK_HOURS FOR DBA643.DAILY_WORK_HOURS;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DAILY_WORK_HOURS TO JAdmin,FAdmin;
+
+--Create Trigger to insert record owner
+CREATE OR REPLACE TRIGGER Trig_Insert_user_company
+BEFORE INSERT OR UPDATE
+ON COMPANY FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+  
+END;
+/
+
+--Create Trigger to insert record owner
+CREATE OR REPLACE TRIGGER Trig_Insert_user_employee
+BEFORE INSERT OR UPDATE
+ON EMPLOYEE FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+--Create Trigger to insert record owner
+CREATE OR REPLACE TRIGGER Trig_Insert_user_timesheet
+BEFORE INSERT OR UPDATE
+ON TIMESHEET FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+  
+END;
+/
+
+--Create Trigger to insert record owner
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Payrollperiod
+BEFORE INSERT OR UPDATE
+ON PAYROLL_PERIOD FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+ 
+END;
+/
+
+--Create Trigger to insert record owner
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Dailyworkhours
+BEFORE INSERT OR UPDATE
+ON DAILY_WORK_HOURS FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+
+
+
+
+-- creating a policy function
+create or replace function sec_fun_secPayroll(p_scheme_name in varchar2, p_object_name in varchar2) return varchar2 is v_where varchar2(300);
+begin
+if user = 'DBA643' then
+v_where := '';
+        Else
+            V_where := 'CTL_SEC_USER = USER';   
+        END IF; 
+      RETURN V_Where;
+END;
+/
+
+
+--drop policy function
+
+exec DBMS_RLS.DROP_POLICY('DBA643', 'company', 'row_owner_sec');
+exec DBMS_RLS.DROP_POLICY('DBA643', 'employee', 'row_owner_sec');
+exec DBMS_RLS.DROP_POLICY('DBA643', 'timesheet', 'row_owner_sec');
+exec DBMS_RLS.DROP_POLICY('DBA643', 'Payroll_period', 'row_owner_sec');
+exec DBMS_RLS.DROP_POLICY('DBA643', 'Daily_work_hours', 'row_owner_sec');
+
+--add policy function
+exec DBMS_RLS.add_policy('DBA643', 'company', 'row_owner_sec','dba643','sec_fun_secPayroll','select,update,delete,insert',true);
+exec DBMS_RLS.add_policy('DBA643', 'employee', 'row_owner_sec','dba643','sec_fun_secPayroll','select,update,delete,insert',true);
+exec DBMS_RLS.add_policy('DBA643', 'timesheet', 'row_owner_sec','dba643','sec_fun_secPayroll','select,update,delete,insert',true);
+exec DBMS_RLS.add_policy('DBA643', 'Payroll_period', 'row_owner_sec','dba643','sec_fun_secPayroll','select,update,delete,insert',true);
+exec DBMS_RLS.add_policy('DBA643', 'Daily_work_hours', 'row_owner_sec','dba643','sec_fun_secPayroll','select,update,delete,insert',true);
